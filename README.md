@@ -85,7 +85,7 @@ prisma/
    ```bash
    docker compose up -d --build
    ```
-4. 第一次启动时容器会自动执行 `prisma migrate deploy` 建表。
+4. 第一次启动时容器会自动执行 Prisma 迁移建表（用 `node ./node_modules/prisma/build/index.js migrate deploy` 直调 CLI 入口）。
 
 ### 本地开发
 
@@ -122,12 +122,12 @@ pnpm dev
 export const lotteryConfig = {
   singleCost: 1,
   tenRollCost: 10,
-  tenRollGuarantee: "r",  // 十连保底至少出一个 r
+  tenRollGuarantee: "sr",  // 十连保底至少出一个 sr
   tiers: [
-    { key: "ssr", label: "SSR 大奖", weight: 1,   amount: [5, 10],  isJackpot: true },
-    { key: "sr",  label: "SR",        weight: 9,   amount: [1, 3] },
-    { key: "r",   label: "R",        weight: 40,  amount: [0.2, 0.5] },
-    { key: "n",   label: "N",        weight: 150, amount: [0.02, 0.1] },
+    { key: "ssr", label: "SSR", weight: 1,   amount: [10, 25],  isJackpot: true },
+    { key: "sr",  label: "SR",        weight: 10,   amount: [5, 10] },
+    { key: "r",   label: "R",        weight: 20,  amount: [1, 2] },
+    { key: "n",   label: "N",        weight: 70, amount: [0.1, 0.5] },
   ],
   rechargeGift: {
     perUsd: 1,         // 每充值 1 美元送 1 抽

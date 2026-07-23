@@ -245,8 +245,12 @@ docker compose up -d --build
 
 容器启动 CMD：
 ```
-npx prisma migrate deploy --schema=prisma/schema.prisma && node server.js
+node ./node_modules/prisma/build/index.js migrate deploy --schema=prisma/schema.prisma && node server.js
 ```
+
+> 注意：standalone 模式下 `node_modules/.bin` 没拷进来、`nextjs` 用户 PATH 也不含它，
+> 所以**不能**用 `npx prisma` 或 `prisma` 直接调，必须用 `node <prisma-build-path>` 直调 CLI 入口。
+> 入口脚本由 prisma CLI 包提供，路径为 `node_modules/prisma/build/index.js`。
 
 只对本系统 schema 跑 migrate，不动 newapi schema。
 

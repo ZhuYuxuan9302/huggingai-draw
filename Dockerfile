@@ -41,7 +41,7 @@ ENV HOSTNAME="0.0.0.0"
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# standalone 产物
+# standalone 产物（含 next server.js + 依赖）
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
@@ -53,12 +53,14 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modul
 COPY --from=builder --chown=nextjs:nodejs /app/src/generated ./src/generated
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
-# prisma cli 二进制（for migrate deploy）
+# prisma cli 完整包（含 .bin 入口脚本）
+# 用 standalone + COPY 整个 prisma 包，不依赖系统的 npx/.bin PATH
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma/engines ./node_modules/@prisma/engines
 
 USER nextjs
 EXPOSE 3000
 
-# 启动前先跑 prisma migrate deploy 建表，再起 Next 服务
-CMD ["sh", "-c", "npx prisma migrate deploy --schema=prisma/schema.prisma && node server.js"]
+# 用 node 直接调 prisma CLI 入口脚本，绕开对 PATH / node_modules/.bin 的依赖
+# 标准入口：node_modules/prisma/build/index.js
+CMD ["sh", "-c", "node ./node_modules/prisma/build/index.js migrate deploy --schema=prisma/schema.prisma && node server.js"]

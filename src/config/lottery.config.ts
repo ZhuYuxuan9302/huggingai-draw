@@ -50,7 +50,7 @@ export const lotteryConfig: LotteryConfig = {
   tiers: [
     {
       key: "ssr",
-      label: "SSR 大奖",
+      label: "SSR",
       color: "from-amber-400 to-yellow-500 text-amber-50",
       weight: 1,
       amount: [10, 25],
