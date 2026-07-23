@@ -1,6 +1,7 @@
 import { sealData, unsealData } from "iron-session";
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
+import { getCookieOptions } from "@/lib/cookies";
 
 const COOKIE_NAME = "lottery_session";
 const SESSION_SECRET =
@@ -38,13 +39,7 @@ export async function setSession(data: SessionData): Promise<void> {
     password: SESSION_SECRET,
     ttl: TTL,
   });
-  cookies().set(COOKIE_NAME, sealed, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: TTL,
-  });
+  cookies().set(COOKIE_NAME, sealed, getCookieOptions({ maxAge: TTL }));
 }
 
 export async function clearSession(): Promise<void> {

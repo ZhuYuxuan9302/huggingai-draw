@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import {
   exchangeCode,
   getUserInfo,
@@ -13,16 +14,24 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
-  const stateCookie = req.headers.get("cookie") || "";
-  const stateFromCookie = stateCookie
-    .split(";")
-    .map((s) => s.trim())
-    .find((s) => s.startsWith("oidc_state="))
-    ?.split("=")[1];
 
-  if (!code || !state || state !== stateFromCookie || !verifyAuthState(state)) {
+  // 从 cookie 读取登录时下发的 state
+  const cookieJar = cookies();
+  const stateFromCookie = cookieJar.get("oidc_state")?.value;
+
+  // 校验：state 必须存在、匹配 cookie、HMAC 签名有效、未过期
+  if (
+    !code ||
+    !state ||
+    !stateFromCookie ||
+    state !== stateFromCookie ||
+    !verifyAuthState(state)
+  ) {
     return NextResponse.json(
-      { error: "invalid_state", message: "State 校验失败" },
+      {
+        error: "invalid_state",
+        message: "State 校验失败",
+      },
       { status: 400 },
     );
   }
@@ -51,6 +60,7 @@ export async function GET(req: Request) {
       isAdmin: isAdminEmail(identity.email),
     });
 
+    // 4. 清掉 oidc_state cookie，并跳转
     const res = NextResponse.redirect(new URL("/lottery", url));
     res.cookies.delete("oidc_state");
     return res;

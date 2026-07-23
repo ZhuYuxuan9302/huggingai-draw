@@ -307,6 +307,24 @@ npx prisma generate --schema=prisma/schema.newapi.prisma
 npm run dev
 ```
 
+### 10.4 Cookie Secure 与 invalid_state 坑
+
+OIDC 登录时报 `{"error":"invalid_state","message":"State 校验失败"}` **99% 是因为 cookie secure 标记和实际协议不匹配**。
+
+**根因**：浏览器在 HTTP 连接上不会保存 Secure cookie，登录时设置的 `oidc_state` 就被丢了，回调时读不到，导致 state !== cookie 里的 state，校验失败。
+
+**判定规则**（`src/lib/cookies.ts`）：
+1. 显式 env `COOKIE_SECURE=true|false` 优先
+2. 否则看 `APP_BASE_URL` 协议：`https://` → secure=true，`http://` → secure=false
+
+**常见错误场景**：
+- ❌ `APP_BASE_URL=http://localhost:3000` 但 `NODE_ENV=production` 让代码硬写 secure=true → 修复后已经改成看协议
+- ✅ `APP_BASE_URL=http://192.168.1.10:3000` → cookie secure=false，正常工作
+- ✅ `APP_BASE_URL=https://draw.example.com` → cookie secure=true，正常工作
+- ⚠️ 反代终止 TLS：客户端实际是 https，但反代 → Node 是 http，APP_BASE_URL 写 https 但 Next 收到的协议是 http。如果遇到这种，设 `COOKIE_SECURE=true` 显式强制
+
+**调试**：浏览器 DevTools → Application → Cookies → 看登录后 `oidc_state` cookie 是否还在，是否被浏览器拒绝（Secure 标记但非 HTTPS 会被默默丢弃）
+
 ## 11. CI / CD
 
 `.github/workflows/` 下三个 workflow：

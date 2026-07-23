@@ -24,6 +24,8 @@ services:
       NODE_ENV: production
       # 应用
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
+      # 可选：覆盖 cookie secure 标记（反代终止 TLS 但 APP_BASE_URL 仍写 http 时设 true）
+      COOKIE_SECURE: ${COOKIE_SECURE:-}
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET 必须配置}
       ADMIN_EMAILS: ${ADMIN_EMAILS:-admin@example.com}
       # 本系统 DB
