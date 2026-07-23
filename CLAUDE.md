@@ -158,17 +158,19 @@ prisma/
 
 ### 5.2 newapi（`prisma/schema.newapi.prisma`）
 
+**设计原则：除了 quota 和 oidc_id，不映射任何其它字段**。newapi 自管理用户表结构，我们的 schema 只 SELECT/UPDATE 这几个字段，避免误碰它的时间戳 / username / status 等列。多 SELECT 一个 newapi 表里不存在的列就会报 "users.updated_at does not exist in the current database"。
+
 只映射 `users` 表的以下字段，**禁止扩字段影响 newapi 自身迁移**：
 
 | 字段 | 用途 |
 |---|---|
-| `id` (Int auto) | newapi 主键 |
-| `oidc_id` (String? unique) | **本系统 join key**，OIDC sub |
-| `username` | 展示用 |
-| `quota` BigInt | 总余额 raw ← 抽奖写入目标 |
-| `used_quota` BigInt | 已消费 raw（计算时备用） |
-| `status` Int | 1=enable，本系统未做禁用过滤，可按需扩展 |
-| `created_at / updated_at` | 时间戳 |
+| `id` (Int auto) | Prisma 主键必需，newapi 表里确实有 |
+| `oidc_id` (String? unique) | **本系统 join key**，OIDC sub，用于确认用户存在 |
+| `quota` BigInt | 总余额 raw ← 抽奖写入目标 / 同步读取源 |
+| `used_quota` BigInt | 已消费 raw，备用（当前代码未直接消费此字段） |
+
+> 不映射 `username / status / created_at / updated_at / access_at` 等。
+> 如需新增映射，先在 newapi 库里 `\d users` 确认列存在再加，否则 Prisma 会在生成时假设该列存在，运行时 SELECT 报错。
 
 ## 6. 环境变量
 
@@ -324,6 +326,25 @@ OIDC 登录时报 `{"error":"invalid_state","message":"State 校验失败"}` **9
 - ⚠️ 反代终止 TLS：客户端实际是 https，但反代 → Node 是 http，APP_BASE_URL 写 https 但 Next 收到的协议是 http。如果遇到这种，设 `COOKIE_SECURE=true` 显式强制
 
 **调试**：浏览器 DevTools → Application → Cookies → 看登录后 `oidc_state` cookie 是否还在，是否被浏览器拒绝（Secure 标记但非 HTTPS 会被默默丢弃）
+
+### 10.5 URL 重定向与 0.0.0.0 坑
+
+OIDC 回调跳转到 `https://0.0.0.0:3000/lottery` 这种无法访问的地址：
+
+**根因**：Docker 里 Next.js server 监听 `HOSTNAME=0.0.0.0`，所有 incoming request 的 Host 头都被解析成 `0.0.0.0:port`。如果 route handler 用 `new URL(req.url)` 作为重定向基底：
+```ts
+const url = new URL(req.url);
+NextResponse.redirect(new URL("/lottery", url));  // 跳到 0.0.0.0:3000/lottery
+```
+浏览器打不开 0.0.0.0，直接挂掉。
+
+**修复**：用 `APP_BASE_URL` env 作为绝对基底，而不是 req.url:
+```ts
+import { appBaseUrl } from "@/lib/url";
+NextResponse.redirect(new URL("/lottery", appBaseUrl()));
+```
+
+**规则**：所有面向客户端的重定向（auth callback/logout/任何 3xx 跳到客户端能访问的地址），都必须用 `appBaseUrl()` 作基底，**禁止**用 `req.url`。req.url 只用于解析 query string（`new URL(req.url).searchParams`），不要作 redirect 基底。
 
 ## 11. CI / CD
 

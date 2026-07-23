@@ -11,7 +11,7 @@ export default function LoginPage() {
             🎰 AI 抽奖
           </h1>
           <p className="mt-2 text-sm text-slate-400">
-            充值抽余额，单抽保底有，十连必出 R 以上
+            充值抽余额，单抽保底有，十连必出 SR 以上
           </p>
         </div>
 

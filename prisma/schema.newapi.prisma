@@ -1,6 +1,11 @@
 // Prisma schema - newapi 数据库
 // 注意：本 schema 仅用于 ORM 查询/更新，**不运行迁移**
 // newapi 自身的表结构由 newapi 管理迁移
+//
+// 设计原则：除了 quota 和 oidc_id，不映射任何其他字段。
+// 我们不读 username、status、时间戳，更不写它们 —— 余额是 newapi 唯一
+// 我们有权限"操作"的东西，所有其它字段一概不 SELECT / 不 UPDATE，
+// 避免误碰 newapi 自管理的字段（如 created_at / updated_at）导致 schema 不匹配报错。
 
 generator client {
   provider = "prisma-client-js"
@@ -12,17 +17,19 @@ datasource db {
   url      = env("NEWAPI_DATABASE_URL")
 }
 
-// 只映射需要操作的字段，newapi 实际表结构更复杂
+// 仅映射 4 个字段：
+//   id      —— Prisma 必需主键，newapi 表里确实有这个自增 id
+//   oidc_id —— 用于「确认用户存在 + 关联本系统 user」的唯一标识
+//   quota   —— 用来读：算累计实际充值美元；用来写：把中奖的 raw 加回用户余额
+//   used_quota —— 可选，目前代码并未直接用，但留着不增成本，便于将来 diff 校验用
+//
+// 注意：不 SELECT 任何时间戳 / status / username / email，因为这些列可能
+// 在你的 newapi 版本里名字或不存在都不一致，多 SELECT 一个不存在的列就会报错。
 model NewApiUser {
   id        Int      @id @default(autoincrement())
-  // 和本系统 users.oidcId 一致
   oidcId    String?  @unique @map("oidc_id") @db.VarChar(255)
-  username  String   @default("")
-  quota     BigInt   @default(0) // 总余额（raw）
-  usedQuota BigInt   @default(0) @map("used_quota") // 已使用（raw）
-  status     Int     @default(1) // 1=enable, 2=disable
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  quota     BigInt   @default(0)
+  usedQuota BigInt   @default(0) @map("used_quota")
 
   @@map("users")
 }
