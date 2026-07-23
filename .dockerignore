@@ -1,0 +1,9 @@
+.pnp.*
+.git
+.github
+node_modules
+.next
+.env*
+Dockerfile
+docker-compose.yml
+*.md

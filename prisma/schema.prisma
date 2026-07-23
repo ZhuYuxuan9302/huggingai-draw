@@ -1,0 +1,121 @@
+// Prisma schema - 本系统数据库
+// 运行迁移用：pnpm db:migrate:dev
+// 仅映射 newapi 的 users 表（只读 quota / used_quota / oidc_id，不迁移）
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// 用户主表：OIDC 同步信息 + 余额/抽奖状态
+// ============================================================
+model User {
+  // OIDC 提供方返回的稳定 id（Authentik 的 sub）
+  oidcId      String   @unique @map("oidc_id")
+  // OIDC 提供方返回的可读名字
+  name        String   @default("")
+  // OIDC 提供方返回的邮箱（管理员判定依据）
+  email       String   @default("")
+  // 头像 URL（可选）
+  picture     String?  @map("picture")
+
+  // ============================================================
+  // 余额相关（单位：newapi 原始 int8granule，$ = value / 500000）
+  // ============================================================
+
+  // 系统累计已赠送的抽奖余额（raw 单位）
+  // 用于“实际充值 = (newapi.quota - 该字段) / 500000” 计算
+  grantedBalanceRaw BigInt @default(0) @map("granted_balance_raw")
+
+  // ============================================================
+  // 抽奖次数
+  // ============================================================
+
+  // 管理员手动增减的额外次数（可负）
+  extraDraws      Int @default(0) @map("extra_draws")
+  // 抽奖规则基于累计实际充值美元自动算出的赠送次数（缓存在这里，每次 sync 刷新）
+  autoDraws       Int @default(0) @map("auto_draws")
+  // 用户已经使用掉的抽奖次数
+  usedDraws       Int @default(0) @map("used_draws")
+
+  // ============================================================
+  // 抽奖产出统计
+  // ============================================================
+
+  // 累计通过抽奖获得的余额（raw 单位），用于报表
+  totalWonRaw     BigInt @default(0) @map("total_won_raw")
+  // 累计抽奖次数（含十连拆成 10 次）
+  totalRolls      Int    @default(0) @map("total_rolls")
+
+  // ============================================================
+  // newapi 余额缓存（每次 sync 时读到的值，用于 diff）
+  // ============================================================
+
+  lastQuotaRaw   BigInt? @map("last_quota_raw")
+  lastSyncedAt   DateTime? @map("last_synced_at")
+
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt      @map("updated_at")
+
+  // ============================================================
+  // 关联
+  // ============================================================
+  drawRecords    DrawRecord[]
+  adminLogs     AdminLog[]  @relation("AdminLogActor")
+  adminTargets  AdminLog[]  @relation("AdminLogTarget")
+
+  @@map("users")
+}
+
+// ============================================================
+// 抽奖记录：每一次抽奖（单抽算 1 条，十连算 10 条）
+// ============================================================
+model DrawRecord {
+  id          BigInt   @id @default(autoincrement())
+  userId      String   @map("user_id")
+  // 批次 id，单抽为随机，十连共享同一 id
+  batchId     String   @map("batch_id")
+  // 等级 key（对应 LotteryConfig.tiers.key），例："ssr"
+  tierKey     String   @map("tier_key")
+  // 获得的余额（raw 单位）
+  amountRaw   BigInt   @map("amount_raw")
+  // 单抽/十连标记
+  source      String   @map("source") // "single" | "ten"
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user        User     @relation(fields: [userId], references: [oidcId], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([batchId])
+  @@index([createdAt])
+  @@map("draw_records")
+}
+
+// ============================================================
+// 管理员操作日志
+// ============================================================
+model AdminLog {
+  id          BigInt   @id @default(autoincrement())
+  actorId     String   @map("actor_id")
+  targetId    String   @map("target_id")
+  action      String   // "add_extra" | "set_extra" | "sync" ...
+  // 变更前
+  beforeValue String   @map("before_value")
+  // 变更后
+  afterValue  String   @map("after_value")
+  // 备注（管理员输入的原因）
+  note        String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  actor       User     @relation("AdminLogActor",  fields: [actorId],  references: [oidcId])
+  target      User     @relation("AdminLogTarget", fields: [targetId], references: [oidcId])
+
+  @@index([targetId])
+  @@index([createdAt])
+  @@map("admin_logs")
+}

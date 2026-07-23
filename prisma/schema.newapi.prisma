@@ -1,0 +1,28 @@
+// Prisma schema - newapi 数据库
+// 注意：本 schema 仅用于 ORM 查询/更新，**不运行迁移**
+// newapi 自身的表结构由 newapi 管理迁移
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/newapi-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("NEWAPI_DATABASE_URL")
+}
+
+// 只映射需要操作的字段，newapi 实际表结构更复杂
+model NewApiUser {
+  id        Int      @id @default(autoincrement())
+  // 和本系统 users.oidcId 一致
+  oidcId    String?  @unique @map("oidc_id") @db.VarChar(255)
+  username  String   @default("")
+  quota     BigInt   @default(0) // 总余额（raw）
+  usedQuota BigInt   @default(0) @map("used_quota") // 已使用（raw）
+  status     Int     @default(1) // 1=enable, 2=disable
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@map("users")
+}

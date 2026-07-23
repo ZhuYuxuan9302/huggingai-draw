@@ -1,0 +1,46 @@
+services:
+  # Postgres for 本系统数据库
+  lottery-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${LOTTERY_DB_USER:-lottery}
+      POSTGRES_PASSWORD: ${LOTTERY_DB_PASSWORD:-lottery_secret}
+      POSTGRES_DB: ${LOTTERY_DB_NAME:-lottery}
+    volumes:
+      - lottery-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${LOTTERY_DB_USER:-lottery} -d ${LOTTERY_DB_NAME:-lottery}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # 抽奖 Web 应用
+  lottery-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      # 应用
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET 必须配置}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-admin@example.com}
+      # 本系统 DB
+      DATABASE_URL: postgresql://${LOTTERY_DB_USER:-lottery}:${LOTTERY_DB_PASSWORD:-lottery_secret}@lottery-db:5432/${LOTTERY_DB_NAME:-lottery}?schema=public
+      # newapi DB
+      NEWAPI_DATABASE_URL: ${NEWAPI_DATABASE_URL:?NEWAPI_DATABASE_URL 必须配置，指向 newapi 数据库}
+      # OIDC
+      OIDC_ISSUER: ${OIDC_ISSUER:?OIDC_ISSUER 必须配置}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:?OIDC_CLIENT_ID 必须配置}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?OIDC_CLIENT_SECRET 必须配置}
+      OIDC_SCOPES: ${OIDC_SCOPES:-openid email profile}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      lottery-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  lottery-db-data:

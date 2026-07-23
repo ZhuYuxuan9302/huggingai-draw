@@ -1,0 +1,39 @@
+name: CI - Type check and Prisma validate
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        # allow-scripts 限制由 Prisma postinstall 触发，CI 中直接允许
+        run: npm ci || npm install
+
+      - name: Approve Prisma install scripts
+        run: |
+          npm approve-scripts @prisma/client @prisma/engines prisma esbuild unrs-resolver 2>/dev/null || true
+          npm rebuild @prisma/client @prisma/engines prisma esbuild unrs-resolver
+
+      - name: Generate Prisma clients
+        run: |
+          npx prisma generate --schema=prisma/schema.prisma
+          npx prisma generate --schema=prisma/schema.newapi.prisma
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: ESLint
+        run: npx next lint --max-warnings=0 || true

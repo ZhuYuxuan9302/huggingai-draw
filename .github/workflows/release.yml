@@ -1,0 +1,47 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract changelog
+        id: changelog
+        run: |
+          # 提取 tag 对应的 CHANGELOG 段落，没有就兜底成 tag 名
+          TAG=${GITHUB_REF#refs/tags/}
+          if [ -f CHANGELOG.md ]; then
+            BODY=$(awk -v tag="$TAG" '
+              /^## \[/{found=0}
+              $0 ~ "^## \\["tag"]"{found=1; next}
+              found && /^## \[/{exit}
+              found {print}
+            ' CHANGELOG.md)
+          else
+            BODY="$TAG release"
+          fi
+          echo "version=$TAG" >> $GITHUB_OUTPUT
+          {
+            echo "body<<EOF"
+            echo "$BODY"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.changelog.outputs.version }}
+          name: ${{ steps.changelog.outputs.version }}
+          body: ${{ steps.changelog.outputs.body }}
+          draft: false
+          prerelease: ${{ contains(steps.changelog.outputs.version, '-') }}
+          generate_release_notes: true
