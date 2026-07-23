@@ -1,9 +1,15 @@
 # syntax=docker/dockerfile:1
 
 # ============== builder ==============
-# 用 slim (Debian bookworm) 而非 alpine：Prisma 5.x 引擎需要 openssl 1.1.x 兼容，
-# Alpine 默认 openssl 3.x 会导致 "Could not parse schema engine response"
+# 用 slim (Debian bookworm) 而非 alpine：Alpine 默认 openssl 3.x 但缺 libssl 库，
+# Prisma 5.x 引擎加载失败会报 "Could not parse schema engine response"
 FROM node:20-slim AS builder
+
+# Prisma generate 需要系统能检测到 OpenSSL 版本，装上 openssl + libssl-dev
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends openssl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
@@ -38,6 +44,13 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+
+# Prisma 5.x 在 slim 镜像上需要 OpenSSL 库 + 命令行工具
+# slim 镜像默认不带 openssl / libssl3，build 时需要装上
+# 警告 "Prisma failed to detect the libssl/openssl version" 就是因为缺 libssl
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends openssl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 # 非 root 用户（Debian 方式）
 RUN groupadd --system --gid 1001 nodejs && \

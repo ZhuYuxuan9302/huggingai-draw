@@ -5,8 +5,9 @@
 ## [Unreleased]
 
 ### Fixed
-- Dockerfile 基础镜像从 `node:20-alpine` 改为 `node:20-slim`：Prisma 5.x 引擎不兼容 Alpine 默认的 OpenSSL 3.x，启动会报 "Could not parse schema engine response" + "Prisma failed to detect the libssl/openssl version"。Debian slim 自带 OpenSSL 1.1.x 即开即用。
-- 容器启动命令从 `npx prisma migrate deploy` 改为 `node ./node_modules/prisma/build/index.js migrate deploy`：Next.js standalone 模式不拷 `node_modules/.bin` 符号链接，且 `nextjs` 用户 PATH 不含工作目录的 `.bin`，导致 `npx prisma` 报 `sh: prisma: not found`。直接用 Node 调 prisma CLI 入口脚本绕开。
+- Dockerfile 基础镜像从 `node:20-alpine` 改为 `node:20-slim`：Alpine 缺 libssl 库，Prisma 5.x 引擎无法加载，报 "Could not parse schema engine response"。
+- 在 Dockerfile 的 builder 和 runner 两个阶段都显式 `apt-get install openssl ca-certificates`：`node:20-slim` 默认不带 openssl 命令行工具和 libssl3，Prisma 检测不到 OpenSSL 版本会报警告且 `migrate deploy` 失败。builder 装是为了让 `prisma generate` 能正确下载 openssl-3.0.x 引擎，runner 装是为了运行时能加载引擎，两个阶段缺一不可。
+- 容器启动命令从 `npx prisma migrate deploy` 改为 `node ./node_modules/prisma/build/index.js migrate deploy`：Next.js standalone 模式不拷 `node_modules/.bin` 符号链接，且 `nextjs` 用户 PATH 不含工作目录的 `.bin`，导致 `npx prisma` 报 `sh: prisma: not found`。
 - 把 Dockerfile 的 `addgroup/adduser` 从 Alpine BusyBox 语法改成 Debian `groupadd/useradd` 语法，和 slim 基础镜像匹配。
 
 ## [0.1.0] - 2026-07-23

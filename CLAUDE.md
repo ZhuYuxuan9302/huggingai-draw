@@ -248,17 +248,27 @@ docker compose up -d --build
 node ./node_modules/prisma/build/index.js migrate deploy --schema=prisma/schema.prisma && node server.js
 ```
 
-**基础镜像选择：必须用 `node:20-slim` 而非 `node:20-alpine`**。
+**基础镜像选择：必须用 `node:20-slim` 而非 `node:20-alpine`**，且 builder 和 runner 都要 `apt-get install openssl`。
 
-> ⚠️ **Prisma 5.x + Alpine 的经典坑**：Alpine 3.18+ 装 OpenSSL 3.x，
-> 但 Prisma 5 内置引擎是 openssl-1.1.x ABI，启动会报：
+> ⚠️ **Prisma 5.x + slim 的 OpenSSL 坑**：
+> `node:20-slim`（Debian Bookworm slim）默认**不带** `openssl` 命令行工具和 libssl 库，
+> Prisma 启动检测不到 OpenSSL 版本就会报：
 > ```
 > Error: Could not parse schema engine response:
 > SyntaxError: Unexpected token 'E', "Error load"... is not valid JSON
+> prisma:warn Prisma failed to detect the libssl/openssl version to use
 > ```
-> 还有 `prisma:warn Prisma failed to detect the libssl/openssl version`。
-> 解决方案是用 Debian-based `node:20-slim`（自带 OpenSSL 1.1.x），别折腾 Alpine。
-> 如果非要用 Alpine，需手动 `RUN apk add --no-cache openssl1.1-compat` 且不一定每次都 work。
+> **解决方案**：在 Dockerfile 的 builder 和 runner **两个阶段**都装 openssl：
+> ```dockerfile
+> RUN apt-get update -y && \
+>     apt-get install -y --no-install-recommends openssl ca-certificates && \
+>     rm -rf /var/lib/apt/lists/*
+> ```
+> - **builder 阶段装**：让 `prisma generate` 能正确检测到 OpenSSL 3.x，下载对应的 `libquery_engine-linux-openssl-3.0.x.so.node` 引擎
+> - **runner 阶段装**：让运行时 `migrate deploy` 能加载引擎
+> - **不能只装 runner 不装 builder**：否则 generate 下载的引擎版本不对，runner 再装也救不回来
+>
+> Alpine 更不行（亚洲版 OpenSSL 3.x 但没 libssl-static），别折腾。
 
 **standalone 的两个注意**：
 1. `node_modules/.bin` 符号链接没拷进来、`nextjs` 用户 PATH 也不含它，
