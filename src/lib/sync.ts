@@ -56,10 +56,15 @@ export async function syncUser(oidcId: string): Promise<SyncResult> {
     quotaRaw > grantedRaw ? quotaRaw - grantedRaw : 0n;
   const realRechargeUsd = rawToUsd(realRechargeRaw);
 
-  // 3. 根据充值算 autoDraws（按累计美元向下取整 * perUsd）
+  // 3. 根据充值算 autoDraws
+  // 公式语义：perUsd 表示「每 perUsd 美元送 1 次」
+  // 例：perUsd=5, 每充 5 美元送 1 次 → floor(200/5) = 40 次
   const perUsd = lotteryConfig.rechargeGift.perUsd;
   const maxGifted = lotteryConfig.rechargeGift.maxGifted;
-  let autoDraws = Math.floor(realRechargeUsd) * perUsd;
+  if (perUsd <= 0) {
+    throw new Error("lotteryConfig.rechargeGift.perUsd 必须 > 0");
+  }
+  let autoDraws = Math.floor(realRechargeUsd / perUsd);
   if (maxGifted !== undefined && autoDraws > maxGifted) {
     autoDraws = maxGifted;
   }
