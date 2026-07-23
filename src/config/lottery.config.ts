@@ -45,44 +45,44 @@ export interface LotteryConfig {
 export const lotteryConfig: LotteryConfig = {
   singleCost: 1,
   tenRollCost: 10,
-  // 十连保底：至少出一个 "r" 以上
-  tenRollGuarantee: "r",
+  // 十连保底：至少出一个 "sr" 以上
+  tenRollGuarantee: "sr",
   tiers: [
     {
       key: "ssr",
       label: "SSR 大奖",
       color: "from-amber-400 to-yellow-500 text-amber-50",
       weight: 1,
-      amount: [5, 10],
+      amount: [10, 25],
       isJackpot: true,
     },
     {
       key: "sr",
       label: "SR",
       color: "from-purple-400 to-fuchsia-500 text-purple-50",
-      weight: 9,
-      amount: [1, 3],
+      weight: 10,
+      amount: [5, 10],
     },
     {
       key: "r",
       label: "R",
       color: "from-sky-400 to-blue-500 text-sky-50",
-      weight: 40,
-      amount: [0.2, 0.5],
+      weight: 20,
+      amount: [1, 2],
     },
     {
       key: "n",
       label: "N",
       color: "from-slate-300 to-slate-400 text-slate-50",
-      weight: 150,
-      amount: [0.02, 0.1],
+      weight: 70,
+      amount: [0.1, 0.5],
     },
   ],
   rechargeGift: {
     // 每充值 1 美元送 1 抽
     perUsd: 1,
-    // 最多累计赠送 200 抽，超过即不再增加
-    maxGifted: 200,
+    // 最多累计赠送 500 抽，超过即不再增加
+    maxGifted: 500,
   },
 };
 
