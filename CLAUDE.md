@@ -279,6 +279,16 @@ node ./node_modules/prisma/build/index.js migrate deploy --schema=prisma/schema.
 
 只对本系统 schema 跑 migrate，不动 newapi schema。
 
+> 初始迁移 `prisma/migrations/0_init/migration.sql` 已经预生成提交到 git，
+> 容器启动时 `migrate deploy` 会直接建表，**无需用户在本地先跑 `prisma migrate dev`**。
+>
+> 如果改了 `schema.prisma` 增删字段：
+> 1. 本地连个 dev 库：`npx prisma migrate dev --name <change>` → Prisma 自动生成新 migration 文件
+> 2. commit `prisma/migrations/<timestamp>_<name>/migration.sql` 到 git
+> 3. 重 build 镜像即可，容器会自动 `migrate deploy` 应用新迁移
+>
+> 别用 `prisma db push`（不跟踪迁移历史，生产会被跳过）。
+
 ### 10.2 手动跑迁移
 
 ```bash

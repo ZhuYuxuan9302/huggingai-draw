@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Fixed
+- 新增初始 Prisma 迁移文件 `prisma/migrations/0_init/migration.sql`：之前用户的容器启动日志报 `No migration found in prisma/migrations` / `No pending migrations to apply`，就是项目里从未生成过任何迁移，`prisma migrate deploy` 无 SQL 可应用。现在把 `init` 迁移提交进 git，容器启动直接建表。
 - Dockerfile 基础镜像从 `node:20-alpine` 改为 `node:20-slim`：Alpine 缺 libssl 库，Prisma 5.x 引擎无法加载，报 "Could not parse schema engine response"。
 - 在 Dockerfile 的 builder 和 runner 两个阶段都显式 `apt-get install openssl ca-certificates`：`node:20-slim` 默认不带 openssl 命令行工具和 libssl3，Prisma 检测不到 OpenSSL 版本会报警告且 `migrate deploy` 失败。builder 装是为了让 `prisma generate` 能正确下载 openssl-3.0.x 引擎，runner 装是为了运行时能加载引擎，两个阶段缺一不可。
 - 容器启动命令从 `npx prisma migrate deploy` 改为 `node ./node_modules/prisma/build/index.js migrate deploy`：Next.js standalone 模式不拷 `node_modules/.bin` 符号链接，且 `nextjs` 用户 PATH 不含工作目录的 `.bin`，导致 `npx prisma` 报 `sh: prisma: not found`。
