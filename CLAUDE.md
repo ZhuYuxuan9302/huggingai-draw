@@ -111,6 +111,7 @@ src/
 │   ├── login/page.tsx             OIDC 登录入口
 │   ├── rules/page.tsx             规则公示（读 lottery.config 渲染）
 │   ├── lottery/page.tsx           server component：尝试 sync → 读 user → 传给 client
+│   ├── history/page.tsx           server component：读最近 100 条记录 → 按 batchId 分组 → 传给 client
 │   ├── admin/page.tsx             管理员 SSR gate
 │   ├── api/
 │   │   ├── auth/login/route.ts     GET，build state → 跳 OIDC authorize
@@ -127,6 +128,7 @@ src/
 │   │   └── admin/stats/route.ts   GET 全局统计
 ├── components/
 │   ├── lottery/lottery-page.tsx   'use client' 抽奖页 UI + 状态管理
+│   ├── lottery/history-page.tsx   'use client' 历史页 UI（分组展示，含十连聚合）
 │   └── admin/admin-page.tsx       'use client' 管理端 UI + Modal
 └── generated/newapi-client/        Prisma 自动生成（不要手改）
 
@@ -390,6 +392,8 @@ NextResponse.redirect(new URL("/lottery", appBaseUrl()));
 - ❌ 不要在 client component 直接访问 prisma，必须走 API 路由
 - ❌ 不要在前端直接判定 `isAdmin`，必须经 server-side session 校验（client 上的 isAdmin 只用于显示入口）
 - ❌ 不要把 Dockerfile 基础镜像改回 `node:20-alpine`，Prisma 5.x 引擎不兼容 Alpine 的 OpenSSL 3.x，会启动失败（见 10.1）
+- ❌ 不要在任何 API route 里直接 `NextResponse.json` 含 BigInt 或 Date 字段的对象，会抛 "Do not know how to serialize a BigInt"。必须用 `safeJson()` 先转，见 `src/lib/serializer.ts`。**包括看起来已经手动 toString 的，Date 字段也会抛错**。
+- ❌ 不要用 `new URL(req.url)` 作为重定向基底，会跳到 `0.0.0.0:3000/...`（见 10.5），必须用 `appBaseUrl()`
 
 ## 14. 调试技巧
 

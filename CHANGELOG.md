@@ -4,7 +4,11 @@
 
 ## [Unreleased]
 
+### Added
+- 抽奖历史页面 `/history`：服务器端读取用户最近 100 条抽奖记录，按 `batchId` 分组（十连的 10 条聚合为一组），展示时间、类型（单抽/十连）、本次中奖总额、每个 tier 卡片（含颜色和 🏆 大奖标记）。顶部 summary 显示总批次、总抽数、总中奖。入口在抽奖页 top bar 和底部链接。
+
 ### Fixed
+- **抽奖点击无响应，前端报 "Do not know how to serialize a BigInt"**：`NextResponse.json()` 内部用 `JSON.stringify`，而 BigInt 不能被 JSON 序列化。抽奖 API 响应包含 BigInt 字段（`amountRaw`、`totalWonRaw`），服务端返回时直接抛错，导致前端拿不到响应 → 抽奖结果不显示、可用次数和已获余额也不自动刷新。新增 `src/lib/serializer.ts` 的 `safeJson()` 递归把 BigInt → string、Date → ISO string，应用到所有含 BigInt 字段的 route：`/api/lottery/draw`、`/api/lottery/sync`、`/api/lottery/me`、`/api/lottery/history`、`/api/me`、`/api/admin/users`、`/api/admin/users/[oidcId]`、`/api/admin/users/[oidcId]/logs`、`/api/admin/stats`。
 - **OIDC 回调 sync 报 "users.updated_at does not exist in the current database"**：newapi（one-api fork）的 users 表实际没有 `updated_at` 列（GORM User 结构体只有 created_at），之前 schema 偷懒加的 `updatedAt` 让 Prisma 强行 SELECT，newapi 库里不存在这列就报错。改成只映射 `id / oidc_id / quota / used_quota` 4 个字段，不碰任何时间戳、username、status 等，避免误碰 newapi 自管理字段。
 - **OIDC 回调错误跳到 `https://0.0.0.0:3000`**：Docker 容器里 Next.js server 监听 `HOSTNAME=0.0.0.0`，所有 incoming request 的 Host 头被解析成 `0.0.0.0:port`，`new URL(req.url)` 拿到 0.0.0.0 host 导致 NextResponse.redirect 跳到无法访问的地址。新增 `src/lib/url.ts` 的 `appBaseUrl()` 工具，从 `APP_BASE_URL` env 取绝对基底；所有面向客户端的重定向都用 appBaseUrl()，禁止用 req.url 作基底。
 - OIDC 回调报 `{"error":"invalid_state","message":"State 校验失败"}`：原因是代码按 `NODE_ENV === "production"` 硬编码 cookie 的 Secure 标记，HTTP 部署时浏览器会默默丢弃 Secure cookie，导致 `oidc_state` cookie 不存在，回调时 state 校验失败。抽取统一 cookie 工具 `src/lib/cookies.ts`，按 `APP_BASE_URL` 协议自动判断 secure（http→false，https→true），并支持 `COOKIE_SECURE=true|false` env 覆盖用于反代终止 TLS 场景。同时修了 session cookie 的同样的 Secure 判定问题。

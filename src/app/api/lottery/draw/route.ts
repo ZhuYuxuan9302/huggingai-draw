@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { performDraw, type DrawOutput } from "@/lib/lottery";
+import { safeJson } from "@/lib/serializer";
 
 interface Body {
   source?: "single" | "ten";
@@ -24,7 +25,8 @@ export async function POST(req: Request) {
   }
   try {
     const result: DrawOutput = await performDraw(session.oidcId, body.source);
-    return NextResponse.json({ data: result });
+    // result 含 BigInt 字段 (amountRaw / totalWonRaw)，必须用 safeJson 转 string
+    return NextResponse.json(safeJson({ data: result }));
   } catch (e) {
     return NextResponse.json(
       { error: "draw_failed", message: (e as Error).message },

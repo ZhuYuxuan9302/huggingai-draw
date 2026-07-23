@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/guard";
 import { rawToUsd } from "@/config/lottery.config";
+import { safeJson } from "@/lib/serializer";
 
 /** GET /api/admin/stats — 全局统计 */
 export async function GET() {
@@ -26,13 +27,15 @@ export async function GET() {
     }),
   ]);
 
-  return NextResponse.json({
-    data: {
-      userCount,
-      totalRolls: totalRollsAgg._sum.totalRolls || 0,
-      totalWonUsd: rawToUsd(totalWonAgg._sum.totalWonRaw || 0n),
-      todayRolls: todayRecords,
-      todayWonUsd: rawToUsd(todayAgg._sum.amountRaw || 0n),
-    },
-  });
+  return NextResponse.json(
+    safeJson({
+      data: {
+        userCount,
+        totalRolls: totalRollsAgg._sum.totalRolls || 0,
+        totalWonUsd: rawToUsd(totalWonAgg._sum.totalWonRaw || 0n),
+        todayRolls: todayRecords,
+        todayWonUsd: rawToUsd(todayAgg._sum.amountRaw || 0n),
+      },
+    }),
+  );
 }

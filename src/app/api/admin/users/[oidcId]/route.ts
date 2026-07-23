@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/guard";
+import { safeJson } from "@/lib/serializer";
 
 interface Body {
   action: "add_extra" | "set_extra" | "sync";
@@ -49,7 +50,7 @@ export async function POST(
         note: body.note || "",
       },
     });
-    return NextResponse.json({ data: r });
+    return NextResponse.json(safeJson({ data: r }));
   }
 
   // add_extra / set_extra

@@ -35,7 +35,7 @@ export interface LotteryConfig {
   tiers: LotteryTier[];
   /** 充值赠送规则 */
   rechargeGift: {
-    /** 每累计 1 美元赠送次数（按累计美元数向下取整） */
+    /** 每累计 5 美元赠送次数（按累计美元数向下取整） */
     perUsd: number;
     /** 赠送上限：最多累计赠送次数，防止富豪刷爆 */
     maxGifted?: number;
@@ -52,7 +52,7 @@ export const lotteryConfig: LotteryConfig = {
       key: "ssr",
       label: "SSR",
       color: "from-amber-400 to-yellow-500 text-amber-50",
-      weight: 1,
+      weight: 0.3,
       amount: [10, 25],
       isJackpot: true,
     },
@@ -60,8 +60,8 @@ export const lotteryConfig: LotteryConfig = {
       key: "sr",
       label: "SR",
       color: "from-purple-400 to-fuchsia-500 text-purple-50",
-      weight: 10,
-      amount: [5, 10],
+      weight: 4.7,
+      amount: [3, 5],
     },
     {
       key: "r",
@@ -74,13 +74,13 @@ export const lotteryConfig: LotteryConfig = {
       key: "n",
       label: "N",
       color: "from-slate-300 to-slate-400 text-slate-50",
-      weight: 70,
-      amount: [0.1, 0.5],
+      weight: 75,
+      amount: [0.1, 0.3],
     },
   ],
   rechargeGift: {
-    // 每充值 1 美元送 1 抽
-    perUsd: 1,
+    // 每充值 5 美元送 1 抽
+    perUsd: 5,
     // 最多累计赠送 500 抽，超过即不再增加
     maxGifted: 500,
   },

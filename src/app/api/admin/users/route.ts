@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getAvailableDraws } from "@/lib/sync";
 import { rawToUsd } from "@/config/lottery.config";
 import { requireAdmin } from "@/lib/guard";
+import { safeJson } from "@/lib/serializer";
 
 /** GET /api/admin/users — 列表（支持搜索 + 分页） */
 export async function GET(req: Request) {
@@ -34,24 +35,27 @@ export async function GET(req: Request) {
     prisma.user.count({ where }),
   ]);
 
-  return NextResponse.json({
-    data: users.map((u) => ({
-      oidcId: u.oidcId,
-      name: u.name,
-      email: u.email,
-      extraDraws: u.extraDraws,
-      autoDraws: u.autoDraws,
-      usedDraws: u.usedDraws,
-      availableDraws: getAvailableDraws(u),
-      totalRolls: u.totalRolls,
-      totalWonUsd: rawToUsd(u.totalWonRaw),
-      grantedBalanceRaw: u.grantedBalanceRaw.toString(),
-      lastQuotaRaw: u.lastQuotaRaw?.toString() || null,
-      lastSyncedAt: u.lastSyncedAt,
-      createdAt: u.createdAt,
-    })),
-    total,
-    limit,
-    offset,
-  });
+  return NextResponse.json(
+    safeJson({
+      data: users.map((u) => ({
+        oidcId: u.oidcId,
+        name: u.name,
+        email: u.email,
+        extraDraws: u.extraDraws,
+        autoDraws: u.autoDraws,
+        usedDraws: u.usedDraws,
+        availableDraws: getAvailableDraws(u),
+        totalRolls: u.totalRolls,
+        totalWonUsd: rawToUsd(u.totalWonRaw),
+        grantedBalanceRaw: u.grantedBalanceRaw.toString(),
+        lastQuotaRaw: u.lastQuotaRaw?.toString() || null,
+        lastSyncedAt: u.lastSyncedAt,
+        createdAt: u.createdAt,
+      })),
+      total,
+      limit,
+      offset,
+    }),
+  );
 }
+

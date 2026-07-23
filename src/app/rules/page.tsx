@@ -18,11 +18,11 @@ export default function RulesPage() {
             {lotteryConfig.tiers.find(t => t.key === lotteryConfig.tenRollGuarantee)?.label}
           </b></p>
         )}
-        <p>• 每累计充值 <b className="text-white">1 美元</b> 赠送 <b className="text-white">{lotteryConfig.rechargeGift.perUsd}</b> 次抽奖</p>
+        <p>• 每累计充值 <b className="text-white">5 美元</b> 赠送 <b className="text-white">{lotteryConfig.rechargeGift.perUsd}</b> 次抽奖</p>
         {lotteryConfig.rechargeGift.maxGifted !== undefined && (
           <p>• 充值赠送累计上限 <b className="text-white">{lotteryConfig.rechargeGift.maxGifted}</b> 次</p>
         )}
-        <p>• 中奖余额会实时添加到 newapi 账号 quota 中</p>
+        <p>• 中奖余额会实时添加到 HuggingAI 账号 余额 中</p>
       </section>
 
       <h2 className="mb-3 text-lg font-bold">概率与金额</h2>
@@ -59,10 +59,10 @@ export default function RulesPage() {
 
       <div className="mt-8">
         <a
-          href="/login"
+          href="/lottery"
           className="text-sm text-brand-400 hover:text-brand-300"
         >
-          ← 返回登录
+          ← 返回首页
         </a>
       </div>
     </main>

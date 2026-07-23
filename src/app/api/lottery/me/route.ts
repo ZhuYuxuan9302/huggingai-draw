@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { syncUser, getAvailableDraws } from "@/lib/sync";
 import { prisma } from "@/lib/db";
 import { rawToUsd } from "@/config/lottery.config";
+import { safeJson } from "@/lib/serializer";
 
 /** GET /api/lottery/me — 抽奖页专用，返回紧凑状态 */
 export async function GET() {
@@ -22,15 +23,18 @@ export async function GET() {
       { status: 404 },
     );
   }
-  return NextResponse.json({
-    data: {
-      name: user.name,
-      availableDraws: getAvailableDraws(user),
-      extraDraws: user.extraDraws,
-      autoDraws: user.autoDraws,
-      usedDraws: user.usedDraws,
-      totalRolls: user.totalRolls,
-      totalWonUsd: rawToUsd(user.totalWonRaw),
-    },
-  });
+  return NextResponse.json(
+    safeJson({
+      data: {
+        name: user.name,
+        availableDraws: getAvailableDraws(user),
+        extraDraws: user.extraDraws,
+        autoDraws: user.autoDraws,
+        usedDraws: user.usedDraws,
+        totalRolls: user.totalRolls,
+        totalWonUsd: rawToUsd(user.totalWonRaw),
+      },
+    }),
+  );
 }
+

@@ -121,6 +121,12 @@ export function LotteryPage({
             🔄 同步充值
           </button>
           <a
+            href="/history"
+            className="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:bg-slate-800"
+          >
+            📜 历史
+          </a>
+          <a
             href="/api/auth/login?action=logout"
             className="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:bg-slate-800"
           >
@@ -167,9 +173,14 @@ export function LotteryPage({
         </div>
       </section>
 
-      <div className="text-center text-xs text-slate-500">
-        累计已抽 {user.totalRolls} 次 · 累计充值 {fmtUsd(user.realRechargeUsd)}
-        · <a href="/rules" className="underline">查看规则</a>
+      <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-slate-500">
+        <span>累计已抽 {user.totalRolls} 次</span>
+        <span>·</span>
+        <span>累计充值 {fmtUsd(user.realRechargeUsd)}</span>
+        <span>·</span>
+        <a href="/history" className="underline hover:text-slate-400">抽奖历史</a>
+        <span>·</span>
+        <a href="/rules" className="underline hover:text-slate-400">查看规则</a>
       </div>
     </main>
   );

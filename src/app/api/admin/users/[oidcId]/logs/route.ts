@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/guard";
+import { safeJson } from "@/lib/serializer";
 
 /** GET /api/admin/users/[oidcId]/logs */
 export async function GET(
@@ -15,5 +16,5 @@ export async function GET(
     orderBy: { createdAt: "desc" },
     take: 100,
   });
-  return NextResponse.json({ data: logs });
+  return NextResponse.json(safeJson({ data: logs }));
 }
