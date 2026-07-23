@@ -1,7 +1,9 @@
 # syntax=docker/dockerfile:1
 
 # ============== builder ==============
-FROM node:20-alpine AS builder
+# 用 slim (Debian bookworm) 而非 alpine：Prisma 5.x 引擎需要 openssl 1.1.x 兼容，
+# Alpine 默认 openssl 3.x 会导致 "Could not parse schema engine response"
+FROM node:20-slim AS builder
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
@@ -10,7 +12,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml* package-lock.json* ./
 COPY prisma ./prisma
 
-# 用 npm 或 pnpm 都行（CI 中已 approve-scripts）
+# 用 npm 或 pnpm 都行
 RUN if [ -f pnpm-lock.yaml ]; then \
       pnpm install --frozen-lockfile || pnpm install; \
     else \
@@ -29,7 +31,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npx next build
 
 # ============== runner ==============
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -37,9 +39,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# 非 root 用户
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
+# 非 root 用户（Debian 方式）
+RUN groupadd --system --gid 1001 nodejs && \
+    useradd --system --uid 1001 --gid nodejs --create-home nextjs
 
 # standalone 产物（含 next server.js + 依赖）
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
@@ -47,14 +49,12 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 # Prisma schema + 生成 client（运行 migrate deploy 需要 schema）
-# standalone 没带 prisma client，我们单独拷一份 node_modules 的 prisma client
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder --chown=nextjs:nodejs /app/src/generated ./src/generated
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
-# prisma cli 完整包（含 .bin 入口脚本）
-# 用 standalone + COPY 整个 prisma 包，不依赖系统的 npx/.bin PATH
+# prisma cli 完整包（用 node 直调入站脚本，不依赖 .bin / PATH）
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma/engines ./node_modules/@prisma/engines
 

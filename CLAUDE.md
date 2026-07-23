@@ -248,9 +248,24 @@ docker compose up -d --build
 node ./node_modules/prisma/build/index.js migrate deploy --schema=prisma/schema.prisma && node server.js
 ```
 
-> 注意：standalone 模式下 `node_modules/.bin` 没拷进来、`nextjs` 用户 PATH 也不含它，
-> 所以**不能**用 `npx prisma` 或 `prisma` 直接调，必须用 `node <prisma-build-path>` 直调 CLI 入口。
-> 入口脚本由 prisma CLI 包提供，路径为 `node_modules/prisma/build/index.js`。
+**基础镜像选择：必须用 `node:20-slim` 而非 `node:20-alpine`**。
+
+> ⚠️ **Prisma 5.x + Alpine 的经典坑**：Alpine 3.18+ 装 OpenSSL 3.x，
+> 但 Prisma 5 内置引擎是 openssl-1.1.x ABI，启动会报：
+> ```
+> Error: Could not parse schema engine response:
+> SyntaxError: Unexpected token 'E', "Error load"... is not valid JSON
+> ```
+> 还有 `prisma:warn Prisma failed to detect the libssl/openssl version`。
+> 解决方案是用 Debian-based `node:20-slim`（自带 OpenSSL 1.1.x），别折腾 Alpine。
+> 如果非要用 Alpine，需手动 `RUN apk add --no-cache openssl1.1-compat` 且不一定每次都 work。
+
+**standalone 的两个注意**：
+1. `node_modules/.bin` 符号链接没拷进来、`nextjs` 用户 PATH 也不含它，
+   所以**不能**用 `npx prisma` 或 `prisma` 直接调，必须用 `node <prisma-build-path>` 直调 CLI 入口。
+   入口路径固定为 `node_modules/prisma/build/index.js`。
+2. Next.js standalone 模式不会自动带上 prisma client，Dockerfile 里要显式 COPY
+   `node_modules/.prisma`、`node_modules/@prisma`、以及 newapi 专用生成目录 `src/generated`。
 
 只对本系统 schema 跑 migrate，不动 newapi schema。
 
@@ -315,6 +330,7 @@ npm run dev
 - ❌ 不要把 `granted_balance_raw` 用错单位（是 raw 不是 USD），它必须和 newapi.quota 同单位
 - ❌ 不要在 client component 直接访问 prisma，必须走 API 路由
 - ❌ 不要在前端直接判定 `isAdmin`，必须经 server-side session 校验（client 上的 isAdmin 只用于显示入口）
+- ❌ 不要把 Dockerfile 基础镜像改回 `node:20-alpine`，Prisma 5.x 引擎不兼容 Alpine 的 OpenSSL 3.x，会启动失败（见 10.1）
 
 ## 14. 调试技巧
 
@@ -353,6 +369,19 @@ npx prisma studio --schema=prisma/schema.prisma
 # newapi（只读心态，别乱改）
 npx prisma studio --schema=prisma/schema.newapi.prisma
 ```
+
+### 14.6 容器内 Prisma 启动失败
+
+如果容器日志报：
+```
+Error: Could not parse schema engine response:
+SyntaxError: Unexpected token 'E', "Error load"... is not valid JSON
+prisma:warn Prisma failed to detect the libssl/openssl version to use
+```
+
+**100% 是用了 Alpine 基础镜像**。解决：把 Dockerfile FROM 改回 `node:20-slim`，重新 `docker compose build --no-cache`。
+
+如果报 `sh: prisma: not found` 或 `npx prisma` 不识别：是 standalone 镜像缺 `.bin`。解决：确认 CMD 用的是 `node ./node_modules/prisma/build/index.js` 而不是 `npx prisma`。
 
 ## 15. Git 提交约定（建议）
 
