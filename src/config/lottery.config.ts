@@ -53,7 +53,7 @@ export const lotteryConfig: LotteryConfig = {
       label: "SSR",
       color: "from-amber-400 to-yellow-500 text-amber-50",
       weight: 0.3,
-      amount: [10, 25],
+      amount: [10, 20],
       isJackpot: true,
     },
     {
@@ -67,15 +67,15 @@ export const lotteryConfig: LotteryConfig = {
       key: "r",
       label: "R",
       color: "from-sky-400 to-blue-500 text-sky-50",
-      weight: 20,
+      weight: 15,
       amount: [1, 2],
     },
     {
       key: "n",
       label: "N",
       color: "from-slate-300 to-slate-400 text-slate-50",
-      weight: 75,
-      amount: [0.1, 0.3],
+      weight: 80,
+      amount: [0.1, 0.2],
     },
   ],
   rechargeGift: {
